@@ -1,6 +1,6 @@
 # Importing necessary modules
 import time, json
-
+from pathlib import Path
 
 class GenResTest():
 
@@ -23,7 +23,7 @@ class GenResTest():
         time.sleep(0.25)
         
         # Test code to ensure json/text sending is working correctly
-        current_JSON_file = open("/home/HGCAL_dev/sw/utils/testingJSON.JSON")
+        current_JSON_file = open(Path.home() / "sw" / "utils" / "testingJSON.JSON")
         current_JSON_data = json.load(current_JSON_file)
         json_string = json.dumps(current_JSON_data)
         print(json_string)

@@ -4,7 +4,7 @@ from fit_bert_tmp import FitData
 from wagoneer import Wagon
 from Test import Test
 from collections import OrderedDict
-
+from pathlib import Path
 import numpy as np
 import os
 import json
@@ -153,7 +153,7 @@ class BERT(Test):
     #def run_test(self, iskip):
     #    return self.wagon.scan(iskip)
 
-    def get_links(self, board_sn="3205WEDBG100001", cfg_path = "/home/HGCAL_dev/sw/static/wagontypes.json", module=None, clock=True):
+    def get_links(self, board_sn="3205WEDBG100001", cfg_path = Path.home() / "sw" / "static" / "wagontypes.json", module=None, clock=True):
         self.subtype = board_sn[3:-6]
 #        print(self.subtype)
 
@@ -214,7 +214,7 @@ class BERT(Test):
         
         link_names = {}
 
-        with open("/home/HGCAL_dev/sw/static/txrx.json") as link_file:
+        with open(Path.home() / "sw" /"static"/"txrx.json") as link_file:
 
             txrx = json.load(link_file)
             

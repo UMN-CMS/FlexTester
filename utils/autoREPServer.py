@@ -8,9 +8,12 @@
 # importing necessary modules
 from asyncore import write
 import time, zmq, json, logging, os, sys
+from pathlib import Path
+
 FORMAT = '%(asctime)s|%(levelname)s|%(message)s|'
-logging.basicConfig(filename="/home/HGCAL_dev/sw/utils/logs/REPServer.log", filemode='w', format=FORMAT, level=logging.INFO)
-sys.path.append('/home/HGCAL_dev/FlexTest/FlexCableTesting')
+
+logging.basicConfig(filename= Path.home() / "sw" / "utils" / "logs" / "REPServer.log", filemode='w', format=FORMAT, level=logging.INFO)
+sys.path.append(Path.home() / "FlexTest" / "FlexCableTesting")
 import multiprocessing as mp
 #from tkinter import NONE
 # Should contain imports for the test scripts
