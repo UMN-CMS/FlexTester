@@ -7,7 +7,7 @@ board_id = sys.argv[1]
 from wagon_rtd import gen_resist_test
 from wagon_rtd import id_resist_test
 from run_iic_check import IIC_Check
-from run_bert_tmp import BERT
+from run_bert import BERT
 from multiprocessing import Pipe
 
 print("Starting")
