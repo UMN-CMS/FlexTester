@@ -9,6 +9,7 @@ Make sure that you are syncronizing your return from the test function with that
 
 import json
 import os
+import numpy as np 
 
 class Test():
     
@@ -38,7 +39,8 @@ class Test():
 
         # Package up results into a dictionary for parsing into a JSON
         self.results = {'name': self.name, 'board_sn': self.board_sn, 'tester': self.tester, 'pass': self.passed, 'data': self.data}
-#        print("Dumping Results")
+        print("Dumping Results")
+        print(self.results)
         self.conn.send(self.dump_results())
         
         self.save_results()
@@ -47,9 +49,25 @@ class Test():
 #        print("Sent")
 
     # Dump results in JSON format for uploading to the database
-    def dump_results(self):
+#    def dump_results(self):
         # This used to conn.send("Dumping Results.") but that was clogging the pipe for the results.
-        return json.dumps(self.results)
+#        return json.dumps(self.results)
+    def dump_results(self):
+        def convert(obj):
+            if isinstance(obj, dict):
+                return {k: convert(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [convert(v) for v in obj]
+            elif isinstance(obj, (np.integer,)):
+                return int(obj)
+            elif isinstance(obj, (np.floating,)):
+                return float(obj)
+            elif isinstance(obj, (np.ndarray,)):
+                return obj.tolist()
+            else:
+                return obj
+
+        return json.dumps(convert(self.results))
 
     # Save JSON file under <serial_number>_<test_name>.json
     def save_results(self):

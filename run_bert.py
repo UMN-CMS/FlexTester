@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from fit_bert_tmp import FitData
 from wagoneer import Wagon
 from Test import Test
-
+from pathlib import Path
 import os
 import json
 
@@ -22,7 +22,7 @@ class BERT(Test):
         print("Conn:", conn)
         self.info_dict = {'name': "Flex Cable Bit Error Rate Test", 'board_sn': board_sn, 'tester': tester}
         self.conn = conn
-        Test.__init__(self, self.bert, self.info_dict, conn, output='BERT.csv', iskip=1, nbits=1e8, module=1)
+        Test.__init__(self, self.bert, self.info_dict, conn, output=Path.home() / 'BERT.csv', iskip=1, nbits=1e8, module=1)
 
     def bert(self, **kwargs):
         self.scans = []
@@ -53,7 +53,7 @@ class BERT(Test):
         #scan_mask = [True] * 11
         scan_mask = [False, True, True, True, True, True, False, False, False, False, False]
 
-        fitdata = FitData("BERT.csv", self.conn, scan_mask=scan_mask)
+        fitdata = FitData(Path.home() / "BERT.csv", self.conn, scan_mask=scan_mask)
 
         results = fitdata.get_results()
 

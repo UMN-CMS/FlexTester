@@ -20,7 +20,7 @@ import multiprocessing as mp
 
 from PUBServer import PUBServer
 from wagon_rtd import id_resist_test
-from run_bert_tmp import BERT
+from run_bert import BERT
 
 # Makes the REPServer a class
 class REPServer():

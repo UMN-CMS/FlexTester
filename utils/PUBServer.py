@@ -2,10 +2,9 @@
 import zmq, signal, logging, os
 from pathlib import Path
 
-if not os.path.isdir("logs"):
-    os.makedirs("logs")
 
-logging.basicConfig(filename=Path.home() / "sw" / "utils" / "logs" / "REPServer.log", filemode='w', level=logging.INFO, format='%(asctime)s %(message)s')
+log_path = Path.home() / "flex_log.log"
+logging.basicConfig(filename=log_path, filemode='w', level=logging.INFO, format='%(asctime)s %(message)s')
 
 # Creates the class for the PUBServer
 class PUBServer():

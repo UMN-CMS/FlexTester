@@ -30,7 +30,7 @@ class BERT(Test):
 #        print("self.info_dict:", self.info_dict)
 #        print("self.conn:",  self.conn)
 #        print("Leaving run_bert_tmp.py. Going to Test.py\n")
-        Test.__init__(self, self.bert, self.info_dict, conn, output='BERT.csv', iskip=5, nbits=1e8, module=module, clock=clock)
+        Test.__init__(self, self.bert, self.info_dict, conn, output=Path.home() / 'BERT.csv', iskip=5, nbits=1e8, module=module, clock=clock)
         
     def bert(self, **kwargs):
 #        print("Now inside of the bert(self, **kwargs) method in the BERT class in run_bert_tmp.py")
@@ -79,7 +79,7 @@ class BERT(Test):
 
 #        self.conn.send("LCD ; Percent:{:3f} Test:4".format(0.5))
 #        print("Leaving run_bert_tmp.py and going to the FitData class in fit_bert_tmp.py") 
-        fitdata = FitData("BERT.csv", self.conn, scan_mask=self.scan_mask, iskip=self.iskip)
+        fitdata = FitData(Path.home() / "BERT.csv", self.conn, scan_mask=self.scan_mask, iskip=self.iskip)
 
         results = fitdata.get_results()
 
