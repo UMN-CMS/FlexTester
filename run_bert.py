@@ -25,6 +25,13 @@ class BERT(Test):
         Test.__init__(self, self.bert, self.info_dict, conn, output=Path.home() / 'BERT.csv', iskip=1, nbits=1e8, module=1)
 
     def bert(self, **kwargs):
+
+        self.passing_criteria = {
+            'min_fit_eo': 0.5,
+            'min_data_eo': 0.0,
+            'max_fit_qual': 0.01,
+        }
+
         self.scans = []
         self.crossovers = []
         self.wagon = Wagon()
@@ -61,8 +68,12 @@ class BERT(Test):
         self.data = {}
         for i,r in enumerate(results):
             self.data[str(i)] = r
-        print(self.data)
+#        print(self.data)
+
+        self.data = {'test_data': self.data, 'passing_criteria': self.passing_criteria}
+ 
         self.conn.send("Done.")
+
         return self.passed, self.data
 
     def reset_zeros(self):
