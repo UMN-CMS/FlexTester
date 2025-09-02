@@ -11,9 +11,9 @@ import time, zmq, json, logging, os, sys
 from pathlib import Path
 
 FORMAT = '%(asctime)s|%(levelname)s|%(message)s|'
-
-logging.basicConfig(filename= Path.home() / "sw" / "utils" / "logs" / "REPServer.log", filemode='w', format=FORMAT, level=logging.INFO)
 sys.path.append(str(Path(__file__).parent.parent))
+#logging.basicConfig(filename= Path.home() / "sw" / "utils" / "logs" / "REPServer.log", filemode='w', format=FORMAT, level=logging.INFO)
+
 import multiprocessing as mp
 #from tkinter import NONE
 # Should contain imports for the test scripts
@@ -21,6 +21,8 @@ import multiprocessing as mp
 from PUBServer import PUBServer
 from wagon_rtd import id_resist_test
 from run_bert import BERT
+logging.basicConfig(format=FORMAT, level=logging.DEBUG)
+
 
 # Makes the REPServer a class
 class REPServer():
@@ -88,6 +90,9 @@ class REPServer():
         # ! If there are any issues with the server, check     !
         # ! your test master config                            !
         # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+        print("HELLLLEOELEOELEO")
+        print(desired_test)
 
 
         if desired_test == 'FlexCableResistanceTest':

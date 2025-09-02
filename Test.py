@@ -11,11 +11,9 @@ import time
 import json
 import os
 import numpy as np 
-
 class Test():
     
     def __init__(self, test_func, info_dict, conn, **kwargs):
-
         self.conn = conn
 
         time.sleep(1)
