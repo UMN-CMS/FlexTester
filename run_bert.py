@@ -83,7 +83,7 @@ class BERT(Test):
 
     def set_prbs(self, tx):
         PRBS = 1
-        self.wagon.set_prbs_len(1000000)
+        self.wagon.set_prbs_len(10000000)
         for i in range(0,5):
             self.wagon.set_tx_mode(i, PRBS)
         
