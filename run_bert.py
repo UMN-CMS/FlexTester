@@ -22,7 +22,46 @@ class BERT(Test):
         print("Conn:", conn)
         self.info_dict = {'name': "Flex Cable Bit Error Rate Test", 'board_sn': board_sn, 'tester': tester}
         self.conn = conn
-        Test.__init__(self, self.bert, self.info_dict, conn, output=Path.home() / 'BERT.csv', iskip=1, nbits=1e8, module=1)
+        # Auto-detect cable type (FBH vs FFH) from barcode serial number
+        self.cable_config = self.get_cable_config(str(board_sn))
+        Test.__init__(self, self.bert, self.info_dict, conn, output=Path.home() / 'BERT.csv', iskip=self.cable_config['iskip'], nbits=1e8, module=1)
+
+    def get_cable_config(self, board_sn):
+        """
+        Auto-detect cable type (FBH or FFH) from barcode serial number
+        and return the appropriate BERT configuration.
+
+        FBH (Front/Back Hadronic) - 5 active e-links (channels 1-5), iskip=1
+        FFH (Front/Forward Hadronic) - 7 active e-links (channels 1-7), iskip=5
+        """
+        if 'FFH' in board_sn.upper():
+            # Front/Forward Hadronic cable configuration
+            config = {
+                'cable_type': 'FFH',
+                'invert_map': [1, 1, 0, 0, 1, 0, 1, 1, 1],
+                'scan_mask': [False, True, True, True, True, True, True, True, False, False, False],
+                'iskip': 5,
+            }
+        elif 'FBH' in board_sn.upper():
+            # Front/Back Hadronic cable configuration
+            config = {
+                'cable_type': 'FBH',
+                'invert_map': [1, 1, 0, 0, 1, 0, 0, 0, 0],
+                'scan_mask': [False, True, True, True, True, True, False, False, False, False, False],
+                'iskip': 1,
+            }
+        else:
+            # Default to FBH if cable type cannot be determined
+            print("WARNING: Could not determine cable type from barcode '{}', defaulting to FBH".format(board_sn))
+            config = {
+                'cable_type': 'FBH',
+                'invert_map': [1, 1, 0, 0, 1, 0, 0, 0, 0],
+                'scan_mask': [False, True, True, True, True, True, False, False, False, False, False],
+                'iskip': 1,
+            }
+
+        print("Detected cable type: {} (from barcode: {})".format(config['cable_type'], board_sn))
+        return config
 
     def bert(self, **kwargs):
 
@@ -37,7 +76,7 @@ class BERT(Test):
         self.wagon = Wagon()
         self.mod = kwargs['module']
 
-        self.invert_map = [1,1,0,0,1,0,0,0,0]
+        self.invert_map = self.cable_config['invert_map']
 
         self.reset_zeros()
         self.set_inverts()
@@ -58,7 +97,7 @@ class BERT(Test):
         """
 
         #scan_mask = [True] * 11
-        scan_mask = [False, True, True, True, True, True, False, False, False, False, False]
+        scan_mask = self.cable_config['scan_mask']
 
         fitdata = FitData(Path.home() / "BERT.csv", self.conn, scan_mask=scan_mask)
 

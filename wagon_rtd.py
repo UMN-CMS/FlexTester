@@ -1,4 +1,27 @@
 #!/usr/bin/python                                                               
+#
+# TODO [FFH SUPPORT]: This resistance test currently only works correctly for
+# FBH (Front/Back Hadronic) flex cables. FFH (Front/Forward Hadronic) cables
+# give max/open-circuit resistance readings with the current pin configuration.
+#
+# To support FFH cables:
+#   1. Determine the correct ADS124 analog input pin mappings for FFH cables.
+#      The current pin assignments (X_PWR_EN=1, X_RESETb=2, VMON_REF0=4, etc.)
+#      are specific to FBH. FFH cables have a different physical layout and
+#      the wires connect to different ADS124 input channels.
+#   2. Determine the correct IDAC-to-channel assignments for FFH.
+#   3. Determine the correct mux pairings (which lines to measure across).
+#      FBH measures 4 lines:
+#        - VMON_REF0 -> PROBE_DC  (IDAC1)
+#        - PWR_EN -> X_RESETb     (IDAC4)
+#        - VMON_REF1 -> WAGON_TYPE (IDAC2)
+#        - VMON_REF2 -> PROBE_DC  (IDAC3)
+#      FFH may have different line pairings and/or a different number of lines.
+#   4. Add auto-detection of cable type from board_sn (like run_bert.py does)
+#      and select the appropriate pin config at runtime.
+#   5. No old FFH resistance configuration was ever saved in git history -
+#      the FFH pin mappings need to be re-derived from the hardware/schematics.
+#
 from HwInterface.ADS124 import ADS124
 from Test import Test 
 
@@ -24,7 +47,14 @@ def check_value(value, minimum, maximum):
 
 class id_ADS124:
 
-    # wire connections to analog input number (12 is common)                                                                                         
+    # TODO [FFH SUPPORT]: These pin mappings are for FBH cables ONLY.
+    # FFH cables have different wire-to-ADS124-channel connections.
+    # Need to add FFH-specific pin mappings and select based on cable type.
+    # Consider restructuring as:
+    #   FBH_PINS = { 'X_PWR_EN': 1, 'X_RESETb': 2, ... }
+    #   FFH_PINS = { ... }  # To be determined from hardware/schematics
+    #
+    # wire connections to analog input number (12 is common) -- FBH ONLY
     X_PWR_EN = 1
     X_RESETb = 2
     VMON_REF0 = 4
@@ -60,6 +90,11 @@ class id_ADS124:
 
 
     def get_resistances(self, num_modules=1, east=False):
+        # TODO [FFH SUPPORT]: This method's mux pairings and IDAC channel
+        # assignments are FBH-specific. For FFH cables, the measurement lines
+        # (VMON_REF0->PROBE_DC, PWR_EN->X_RESETb, etc.) and their associated
+        # IDAC channels will be different. Add cable_type parameter or detect
+        # from board_sn and branch accordingly.
 
         print("testing ID chip")
         all_passed = True
@@ -161,6 +196,9 @@ class id_ADS124:
 class id_resist_test(Test):
 
     def __init__(self, conn, board_sn=-1, tester=""):
+        # TODO [FFH SUPPORT]: Auto-detect cable type from board_sn here
+        # (check for 'FFH' vs 'FBH' in serial number, like run_bert.py does)
+        # and pass cable_type to id_ADS124 so it uses the correct pin config.
         self.info_dict = {'name': "Flex Cable Resistance Test", 'board_sn': board_sn, 'tester': tester}
         
         
