@@ -179,9 +179,9 @@ class id_ADS124:
         if not passed:
             all_passed = False
             if resistance[0] <= self.passing_criteria['min_resistance']:
-                self.comments.append('Short identified on module {} path {}'.format(self.module, line))
+                self.comments.append('Short identified on path {}'.format(line))
             else:
-                self.comments.append('Open identified on module {} path {}'.format(self.module, line))
+                self.comments.append('Open identified on path {}'.format(line))
         self.data[line] = resistance[0]
         print("line %s resistance is %.2f ohms; %s" % (line, resistance[0], message))
 

@@ -99,7 +99,7 @@ class BERT(Test):
         #scan_mask = [True] * 11
         scan_mask = self.cable_config['scan_mask']
 
-        fitdata = FitData(Path.home() / "BERT.csv", self.conn, scan_mask=scan_mask)
+        fitdata = FitData(Path.home() / "BERT.csv", self.conn, scan_mask=scan_mask, iskip=self.cable_config["iskip"])
 
         results = fitdata.get_results()
 
