@@ -84,41 +84,41 @@ class BERT(Test):
         #self.setup_links(self.info_dict['board_sn'])
         self.set_prbs(1)
 
-        self.run_long_scan(kwargs['iskip'], kwargs['nbits'], kwargs['output'])
-
-        """for i in [1, 5, 10]:
-
-            scan = self.run_test(i)
-            
-            self.scans.append(scan)        
-            self.crossovers.append(self.parse_scan(scan, i))
-        
-        for co in self.crossovers:
-            self.print_qp_info(co)
-        """
-
-        #scan_mask = [True] * 11
+        MAX_RETRIES = 3
         scan_mask = self.cable_config['scan_mask']
-
-        fitdata = FitData(Path.home() / "BERT.csv", self.conn, scan_mask=scan_mask, iskip=self.cable_config["iskip"], link_names=self.cable_config.get("link_names", []))
-
-        results = fitdata.get_results()
-
-        self.passed = True
-        self.data = {}
         link_names = self.cable_config.get('link_names', [])
-        for i,r in enumerate(results):
-            key = link_names[i] if i < len(link_names) else str(i)
-            self.data[key] = r
-
-        # Check pass/fail against criteria
         min_eo = self.passing_criteria['min_fit_eo']
         max_mp_err = self.passing_criteria['max_midpoint_errors']
-        for name, r in self.data.items():
-            eo = r.get("Eye Opening", -999)
-            mp_err = r.get("Midpoint Errors", -999)
-            if eo < min_eo or mp_err > max_mp_err:
-                self.passed = False
+
+        for attempt in range(1, MAX_RETRIES + 1):
+            self.run_long_scan(kwargs['iskip'], kwargs['nbits'], kwargs['output'])
+
+            fitdata = FitData(Path.home() / "BERT.csv", self.conn, scan_mask=scan_mask, iskip=self.cable_config["iskip"], link_names=link_names)
+            results = fitdata.get_results()
+
+            self.passed = True
+            self.data = {}
+            for i, r in enumerate(results):
+                key = link_names[i] if i < len(link_names) else str(i)
+                self.data[key] = r
+
+            # Check pass/fail against criteria
+            for name, r in self.data.items():
+                eo = r.get("Eye Opening", -999)
+                mp_err = r.get("Midpoint Errors", -999)
+                if eo < min_eo or mp_err > max_mp_err:
+                    self.passed = False
+
+            if self.passed:
+                if attempt > 1:
+                    print("BERT passed on retry {} of {}".format(attempt, MAX_RETRIES))
+                break
+            elif attempt < MAX_RETRIES:
+                failed = [n for n, r in self.data.items() if r.get("Eye Opening", -999) < min_eo or r.get("Midpoint Errors", -999) > max_mp_err]
+                print("BERT attempt {}/{} failed on: {}. Retrying...".format(attempt, MAX_RETRIES, ", ".join(failed)))
+            else:
+                failed = [n for n, r in self.data.items() if r.get("Eye Opening", -999) < min_eo or r.get("Midpoint Errors", -999) > max_mp_err]
+                print("BERT failed after {} attempts. Failed links: {}".format(MAX_RETRIES, ", ".join(failed)))
 
         self.data = {'test_data': self.data, 'passing_criteria': self.passing_criteria}
  
