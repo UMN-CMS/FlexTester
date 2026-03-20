@@ -62,7 +62,6 @@ class Test():
 
     # Save JSON file under <serial_number>_<test_name>.json
     def save_results(self):
-        print("Saving the json files")
         save_path = Path.home() / "FlexTest" / "FlexCableTesting" / "jsons/" 
         if not os.path.exists(save_path):
             os.makedirs(save_path)

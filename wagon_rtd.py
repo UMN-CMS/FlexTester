@@ -96,7 +96,6 @@ class id_ADS124:
         # IDAC channels will be different. Add cable_type parameter or detect
         # from board_sn and branch accordingly.
 
-        print("testing ID chip")
         all_passed = True
 
 
@@ -121,7 +120,6 @@ class id_ADS124:
             else:
                 self.comments.append('Open identified on path {}'.format(line))
         self.data[line] = resistance[0]
-        print("line %s resistance is %.2f ohms; %s" % (line, resistance[0], message))
 
 
 
@@ -146,7 +144,6 @@ class id_ADS124:
             else:
                 self.comments.append('Open identified on path {}'.format(line))
         self.data[line] = resistance[0]
-        print("line %s resistance is %.2f ohms; %s" % (line, resistance[0], message))
      
 
  
@@ -165,7 +162,6 @@ class id_ADS124:
             else:
                 self.comments.append('Open identified on path {}'.format(line))
         self.data[line] = resistance[0]
-        print("line %s resistance is %.2f ohms; %s" % (line, resistance[0], message))
 
 
 
@@ -183,10 +179,19 @@ class id_ADS124:
             else:
                 self.comments.append('Open identified on path {}'.format(line))
         self.data[line] = resistance[0]
-        print("line %s resistance is %.2f ohms; %s" % (line, resistance[0], message))
 
 
-        print("Did all pass? : {}".format(all_passed))
+
+        # Print resistance summary table
+        min_r = self.passing_criteria['min_resistance']
+        max_r = self.passing_criteria['max_resistance']
+        print("Resistance Test: {}".format("PASS" if all_passed else "FAIL"))
+        print("{:<25} {:>12} {:>10}".format("Line", "Resistance", "Status"))
+        print("-" * 50)
+        for ln, val in self.data.items():
+            st = "PASS" if min_r < val < max_r else "FAIL"
+            print("{:<25} {:>8.2f} ohms {:>10}".format(ln, val, st))
+        print("-" * 50)
 
         self.chip.powerdown()
 
@@ -227,7 +232,6 @@ class id_resist_test(Test):
        
         self.conn.send("Done.")
 
-        print({"pass": passed, "data": data})
 
         return passed, data
 
