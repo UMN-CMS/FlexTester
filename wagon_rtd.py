@@ -12,10 +12,10 @@
 #   2. Determine the correct IDAC-to-channel assignments for FFH.
 #   3. Determine the correct mux pairings (which lines to measure across).
 #      FBH measures 4 lines:
-#        - VMON_REF0 -> PROBE_DC  (IDAC1)
-#        - PWR_EN -> X_RESETb     (IDAC4)
-#        - VMON_REF1 -> WAGON_TYPE (IDAC2)
-#        - VMON_REF2 -> PROBE_DC  (IDAC3)
+#        - VMON_REF0 -> PROBE_DC  (IDAC1)  =>  MPPC_BIAS + VCC_IN
+#        - PWR_EN -> X_RESETb     (IDAC4)  =>  PWR_EN + SCA_RSTB
+#        - VMON_REF1 -> WAGON_TYPE (IDAC2)  =>  VMON + RTD
+#        - VMON_REF2 -> PROBE_DC  (IDAC3)  =>  LED_BIAS + VCC_IN
 #      FFH may have different line pairings and/or a different number of lines.
 #   4. Add auto-detection of cable type from board_sn (like run_bert.py does)
 #      and select the appropriate pin config at runtime.
@@ -99,7 +99,7 @@ class id_ADS124:
         all_passed = True
 
 
-        # VMON_REF0 -> PROBE_DC 
+        # ADC: VMON_REF0 -> PROBE_DC  |  Signal: MPPC_BIAS + VCC_IN 
         self.chip.ref_config(1) # internal reference on (needed for IDAC)
         self.chip.set_conv_delay(7)
 
@@ -110,7 +110,7 @@ class id_ADS124:
         self.chip.set_idac_channel(self.IDAC1,13)
 
         self.chip.setup_mux(self.VMON_REF0,self.PROBE_DC)
-        line = 'VMON_REF0 -> PROBE_DC'
+        line = 'MPPC_BIAS + VCC_IN'
         resistance = self.chip.read_volts(vref=2000,ave=4)
         passed, message = check_value(resistance[0], self.passing_criteria['min_resistance'], self.passing_criteria['max_resistance'])
         if not passed:
@@ -123,7 +123,7 @@ class id_ADS124:
 
 
 
-        ############## Next line        
+        # ADC: PWR_EN -> X_RESETb  |  Signal: PWR_EN + SCA_RSTB        
         self.chip.ref_config(1) # internal reference on (needed for IDAC)                                                                        
         self.chip.set_gain(1,enable=False)
         self.chip.set_conv_delay(7)
@@ -134,7 +134,7 @@ class id_ADS124:
 #        self.chip.setup_mux(self.X_RESETb, self.X_PWR_EN)
 
         self.chip.setup_mux(self.X_PWR_EN, self.X_RESETb)
-        line = 'PWR_EN -> X_RESETb'
+        line = 'PWR_EN + SCA_RSTB'
         resistance = self.chip.read_volts(vref=2000,ave=4)
         passed, message = check_value(resistance[0], self.passing_criteria['min_resistance'], self.passing_criteria['max_resistance'])
         if not passed:
@@ -147,12 +147,12 @@ class id_ADS124:
      
 
  
-        ############### Next line
+        # ADC: VMON_REF1 -> WAGON_TYPE  |  Signal: VMON + RTD
         self.chip.set_idac_channel(self.IDAC2,13)
         self.chip.set_idac_current(500)
 #        self.chip.setup_mux(self.WAGON_TYPE,self.VMON_REF1)
         self.chip.setup_mux(self.VMON_REF1, self.WAGON_TYPE)
-        line = 'VMON_REF1 -> WAGON_TYPE'
+        line = 'VMON + RTD'
         resistance = self.chip.read_volts(vref=2000,ave=4)
         passed, message = check_value(resistance[0], self.passing_criteria['min_resistance'], self.passing_criteria['max_resistance'])
         if not passed:
@@ -165,11 +165,11 @@ class id_ADS124:
 
 
 
-        ############## Next line        
+        # ADC: VMON_REF2 -> PROBE_DC  |  Signal: LED_BIAS + VCC_IN        
         self.chip.set_idac_channel(self.IDAC3,13)
         #self.chip.set_idac_current(500)
         self.chip.setup_mux(self.VMON_REF2,self.PROBE_DC)
-        line = 'VMON_REF2 -> PROBE_DC'
+        line = 'LED_BIAS + VCC_IN'
         resistance = self.chip.read_volts(vref=2000,ave=4)
         passed, message = check_value(resistance[0], self.passing_criteria['min_resistance'], self.passing_criteria['max_resistance'])
         if not passed:

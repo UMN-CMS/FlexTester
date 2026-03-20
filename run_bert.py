@@ -30,6 +30,16 @@ class BERT(Test):
         Auto-detect cable type (FBH or FFH) from barcode serial number
         and return the appropriate BERT configuration.
 
+        # BERT link name mapping (index -> schematic name):
+        #   0: TRIG_1 + TRIG_2      (Trigger links 1,2)
+        #   1: TRIG_3 + TRIG_4      (Trigger links 3,4)
+        #   2: DAQ_1 + DAQ_2        (DAQ links 1,2)
+        #   3: CLK320 + FC          (320MHz clock + fast command)
+        #   4: SCA_CLK + SCA_IN     (SCA clock + SCA input)
+        #   5: ROC2_DAQ_1 + SCA_OUT (ROC2 DAQ link 1 + SCA output) [FFH only]
+        #   6: ROC2_DAQ_2 + FC2     (ROC2 DAQ link 2 + fast command 2) [FFH only]
+        #   7: CLK320_2 + CLK320_2  (320MHz clock 2) [FFH only]
+        #
         FBH (Front/Back Hadronic) - 5 active e-links (channels 1-5), iskip=1
         FFH (Front/Forward Hadronic) - 8 active e-links (channels 0-7), iskip=5
         """
@@ -39,8 +49,8 @@ class BERT(Test):
                 'cable_type': 'FFH',
                 'invert_map': [1, 1, 0, 0, 1, 0, 1, 0],
                 'scan_mask': [False, True, True, True, True, True, True, True, True],
-                'link_names': ['TRIG_1+TRIG_2', 'TRIG_3+TRIG_4', 'DAQ_1+DAQ_2', 'CLK320+FC', 'SCA_CLK+SCA_IN', 'ROC2_DAQ_1+SCA_OUT', 'ROC2_DAQ_2+FC2', 'ELINK_7'],
-                'iskip': 5,
+                'link_names': ['TRIG_1 + TRIG_2', 'TRIG_3 + TRIG_4', 'DAQ_1 + DAQ_2', 'CLK320 + FC', 'SCA_CLK + SCA_IN', 'ROC2_DAQ_1 + SCA_OUT', 'ROC2_DAQ_2 + FC2', 'CLK320_2 + CLK320_2'],
+                'iskip': 1,
             }
         elif 'FBH' in board_sn.upper():
             # Front/Back Hadronic cable configuration
@@ -48,7 +58,7 @@ class BERT(Test):
                 'cable_type': 'FBH',
                 'invert_map': [1, 1, 0, 0, 1, 0, 0, 0],
                 'scan_mask': [False, True, True, True, True, True, False, False, False],
-                'link_names': ['TRIG_1+TRIG_2', 'TRIG_3+TRIG_4', 'DAQ_1+DAQ_2', 'CLK320+FC', 'SCA_CLK+SCA_IN'],
+                'link_names': ['TRIG_1 + TRIG_2', 'TRIG_3 + TRIG_4', 'DAQ_1 + DAQ_2', 'CLK320 + FC', 'SCA_CLK + SCA_IN'],
                 'iskip': 1,
             }
         else:
@@ -58,7 +68,7 @@ class BERT(Test):
                 'cable_type': 'FBH',
                 'invert_map': [1, 1, 0, 0, 1, 0, 0, 0],
                 'scan_mask': [False, True, True, True, True, True, False, False, False],
-                'link_names': ['TRIG_1+TRIG_2', 'TRIG_3+TRIG_4', 'DAQ_1+DAQ_2', 'CLK320+FC', 'SCA_CLK+SCA_IN'],
+                'link_names': ['TRIG_1 + TRIG_2', 'TRIG_3 + TRIG_4', 'DAQ_1 + DAQ_2', 'CLK320 + FC', 'SCA_CLK + SCA_IN'],
                 'iskip': 1,
             }
 
