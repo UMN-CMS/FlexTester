@@ -214,6 +214,11 @@ class Wagon:
                 self.wagon.getNode("INPUT_%d.CAPTURE_DELAY"%(irx)).write(delay)      
             self.wagon.getNode("CTL.RESET_RX").write(1)
             self.hw.dispatch()
+            self.wagon.getNode("CTL.RESET_RX").write(0)
+            self.wagon.getNode("CTL.CLEAR_PRBS").write(1)
+            self.hw.dispatch()
+            self.wagon.getNode("CTL.CLEAR_PRBS").write(0)
+            self.hw.dispatch()
             res=self.do_ber(False)
             print("%4d"%(delay),end='')
             for irx in range(0,self.nrx+self.ntxrx):

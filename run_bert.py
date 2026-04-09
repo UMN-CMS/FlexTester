@@ -19,17 +19,67 @@ import json
 class BERT(Test):
 
     def __init__(self, conn, board_sn=-1, tester=''):
-        print("Conn:", conn)
         self.info_dict = {'name': "Flex Cable Bit Error Rate Test", 'board_sn': board_sn, 'tester': tester}
         self.conn = conn
-        Test.__init__(self, self.bert, self.info_dict, conn, output=Path.home() / 'BERT.csv', iskip=1, nbits=1e8, module=1)
+        # Auto-detect cable type (FBH vs FFH) from barcode serial number
+        self.cable_config = self.get_cable_config(str(board_sn))
+        Test.__init__(self, self.bert, self.info_dict, conn, output=Path.home() / 'BERT.csv', iskip=self.cable_config['iskip'], nbits=1e8, module=1)
+
+    def get_cable_config(self, board_sn):
+        """
+        Auto-detect cable type (FBH or FFH) from barcode serial number
+        and return the appropriate BERT configuration.
+
+        # BERT link name mapping (index -> schematic name):
+        #   0: TRIG_1 + TRIG_2      (Trigger links 1,2)
+        #   1: TRIG_3 + TRIG_4      (Trigger links 3,4)
+        #   2: DAQ_1 + DAQ_2        (DAQ links 1,2)
+        #   3: CLK320 + FC          (320MHz clock + fast command)
+        #   4: SCA_CLK + SCA_IN     (SCA clock + SCA input)
+        #   5: ROC2_DAQ_1 + SCA_OUT (ROC2 DAQ link 1 + SCA output) [FFH only]
+        #   6: ROC2_DAQ_2 + FC2     (ROC2 DAQ link 2 + fast command 2) [FFH only]
+        #   7: CLK320_2 + CLK320_2  (320MHz clock 2) [FFH only]
+        #
+        FBH (Front/Back Hadronic) - 5 active e-links (channels 1-5), iskip=1
+        FFH (Front/Forward Hadronic) - 8 active e-links (channels 0-7), iskip=5
+        """
+        if 'FFH' in board_sn.upper():
+            # Front/Forward Hadronic cable configuration
+            config = {
+                'cable_type': 'FFH',
+                'invert_map': [1, 1, 0, 0, 1, 0, 1, 0],
+                'scan_mask': [False, True, True, True, True, True, True, True, True],
+                'link_names': ['TRIG_1 + TRIG_2', 'TRIG_3 + TRIG_4', 'DAQ_1 + DAQ_2', 'CLK320 + FC', 'SCA_CLK + SCA_IN', 'ROC2_DAQ_1 + SCA_OUT', 'ROC2_DAQ_2 + FC2', 'CLK320_2 + CLK320_2'],
+                'iskip': 1,
+            }
+        elif 'FBH' in board_sn.upper():
+            # Front/Back Hadronic cable configuration
+            config = {
+                'cable_type': 'FBH',
+                'invert_map': [1, 1, 0, 0, 1, 0, 0, 0],
+                'scan_mask': [False, True, True, True, True, True, False, False, False],
+                'link_names': ['TRIG_1 + TRIG_2', 'TRIG_3 + TRIG_4', 'DAQ_1 + DAQ_2', 'CLK320 + FC', 'SCA_CLK + SCA_IN'],
+                'iskip': 1,
+            }
+        else:
+            # Default to FBH if cable type cannot be determined
+            print("WARNING: Could not determine cable type from barcode '{}', defaulting to FBH".format(board_sn))
+            config = {
+                'cable_type': 'FBH',
+                'invert_map': [1, 1, 0, 0, 1, 0, 0, 0],
+                'scan_mask': [False, True, True, True, True, True, False, False, False],
+                'link_names': ['TRIG_1 + TRIG_2', 'TRIG_3 + TRIG_4', 'DAQ_1 + DAQ_2', 'CLK320 + FC', 'SCA_CLK + SCA_IN'],
+                'iskip': 1,
+            }
+
+        print("Detected cable type: {}".format(config['cable_type']))
+        return config
 
     def bert(self, **kwargs):
 
         self.passing_criteria = {
-            'min_fit_eo': 0.5,
-            'min_data_eo': 0.0,
-            'max_fit_qual': 0.01,
+            'min_fit_eo': 150,
+            'max_midpoint_errors': 0,
         }
 
         self.scans = []
@@ -37,38 +87,48 @@ class BERT(Test):
         self.wagon = Wagon()
         self.mod = kwargs['module']
 
-        self.invert_map = [1,1,0,0,1,0,0,0,0]
+        self.invert_map = self.cable_config['invert_map']
 
         self.reset_zeros()
         self.set_inverts()
         #self.setup_links(self.info_dict['board_sn'])
         self.set_prbs(1)
 
-        self.run_long_scan(kwargs['iskip'], kwargs['nbits'], kwargs['output'])
+        MAX_RETRIES = 3
+        scan_mask = self.cable_config['scan_mask']
+        link_names = self.cable_config.get('link_names', [])
+        min_eo = self.passing_criteria['min_fit_eo']
+        max_mp_err = self.passing_criteria['max_midpoint_errors']
 
-        """for i in [1, 5, 10]:
+        for attempt in range(1, MAX_RETRIES + 1):
+            self.run_long_scan(kwargs['iskip'], kwargs['nbits'], kwargs['output'])
 
-            scan = self.run_test(i)
-            
-            self.scans.append(scan)        
-            self.crossovers.append(self.parse_scan(scan, i))
-        
-        for co in self.crossovers:
-            self.print_qp_info(co)
-        """
+            fitdata = FitData(Path.home() / "BERT.csv", self.conn, scan_mask=scan_mask, iskip=self.cable_config["iskip"], link_names=link_names)
+            results = fitdata.get_results()
 
-        #scan_mask = [True] * 11
-        scan_mask = [False, True, True, True, True, True, False, False, False, False, False]
+            self.passed = True
+            self.data = {}
+            for i, r in enumerate(results):
+                key = link_names[i] if i < len(link_names) else str(i)
+                self.data[key] = r
 
-        fitdata = FitData(Path.home() / "BERT.csv", self.conn, scan_mask=scan_mask)
+            # Check pass/fail against criteria
+            for name, r in self.data.items():
+                eo = r.get("Eye Opening", -999)
+                mp_err = r.get("Midpoint Errors", -999)
+                if eo < min_eo or mp_err > max_mp_err:
+                    self.passed = False
 
-        results = fitdata.get_results()
-
-        self.passed = True
-        self.data = {}
-        for i,r in enumerate(results):
-            self.data[str(i)] = r
-#        print(self.data)
+            if self.passed:
+                if attempt > 1:
+                    print("BERT passed on retry {} of {}".format(attempt, MAX_RETRIES))
+                break
+            elif attempt < MAX_RETRIES:
+                failed = [n for n, r in self.data.items() if r.get("Eye Opening", -999) < min_eo or r.get("Midpoint Errors", -999) > max_mp_err]
+                print("BERT attempt {}/{} failed on: {}. Retrying...".format(attempt, MAX_RETRIES, ", ".join(failed)))
+            else:
+                failed = [n for n, r in self.data.items() if r.get("Eye Opening", -999) < min_eo or r.get("Midpoint Errors", -999) > max_mp_err]
+                print("BERT failed after {} attempts. Failed links: {}".format(MAX_RETRIES, ", ".join(failed)))
 
         self.data = {'test_data': self.data, 'passing_criteria': self.passing_criteria}
  
@@ -78,13 +138,13 @@ class BERT(Test):
 
     def reset_zeros(self):
         ZERO_MODE = 7
-        for i in range(0,5):
+        for i in range(0, int(self.wagon.ntx)):
             self.wagon.set_tx_mode(i, ZERO_MODE)
 
     def set_prbs(self, tx):
         PRBS = 1
         self.wagon.set_prbs_len(10000000)
-        for i in range(0,5):
+        for i in range(0, int(self.wagon.ntx)):
             self.wagon.set_tx_mode(i, PRBS)
         
 

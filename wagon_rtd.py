@@ -1,4 +1,27 @@
 #!/usr/bin/python                                                               
+#
+# TODO [FFH SUPPORT]: This resistance test currently only works correctly for
+# FBH (Front/Back Hadronic) flex cables. FFH (Front/Forward Hadronic) cables
+# give max/open-circuit resistance readings with the current pin configuration.
+#
+# To support FFH cables:
+#   1. Determine the correct ADS124 analog input pin mappings for FFH cables.
+#      The current pin assignments (X_PWR_EN=1, X_RESETb=2, VMON_REF0=4, etc.)
+#      are specific to FBH. FFH cables have a different physical layout and
+#      the wires connect to different ADS124 input channels.
+#   2. Determine the correct IDAC-to-channel assignments for FFH.
+#   3. Determine the correct mux pairings (which lines to measure across).
+#      FBH measures 4 lines:
+#        - VMON_REF0 -> PROBE_DC  (IDAC1)  =>  MPPC_BIAS + VCC_IN
+#        - PWR_EN -> X_RESETb     (IDAC4)  =>  PWR_EN + SCA_RSTB
+#        - VMON_REF1 -> WAGON_TYPE (IDAC2)  =>  VMON + RTD
+#        - VMON_REF2 -> PROBE_DC  (IDAC3)  =>  LED_BIAS + VCC_IN
+#      FFH may have different line pairings and/or a different number of lines.
+#   4. Add auto-detection of cable type from board_sn (like run_bert.py does)
+#      and select the appropriate pin config at runtime.
+#   5. No old FFH resistance configuration was ever saved in git history -
+#      the FFH pin mappings need to be re-derived from the hardware/schematics.
+#
 from HwInterface.ADS124 import ADS124
 from Test import Test 
 
@@ -24,7 +47,14 @@ def check_value(value, minimum, maximum):
 
 class id_ADS124:
 
-    # wire connections to analog input number (12 is common)                                                                                         
+    # TODO [FFH SUPPORT]: These pin mappings are for FBH cables ONLY.
+    # FFH cables have different wire-to-ADS124-channel connections.
+    # Need to add FFH-specific pin mappings and select based on cable type.
+    # Consider restructuring as:
+    #   FBH_PINS = { 'X_PWR_EN': 1, 'X_RESETb': 2, ... }
+    #   FFH_PINS = { ... }  # To be determined from hardware/schematics
+    #
+    # wire connections to analog input number (12 is common) -- FBH ONLY
     X_PWR_EN = 1
     X_RESETb = 2
     VMON_REF0 = 4
@@ -60,12 +90,16 @@ class id_ADS124:
 
 
     def get_resistances(self, num_modules=1, east=False):
+        # TODO [FFH SUPPORT]: This method's mux pairings and IDAC channel
+        # assignments are FBH-specific. For FFH cables, the measurement lines
+        # (VMON_REF0->PROBE_DC, PWR_EN->X_RESETb, etc.) and their associated
+        # IDAC channels will be different. Add cable_type parameter or detect
+        # from board_sn and branch accordingly.
 
-        print("testing ID chip")
         all_passed = True
 
 
-        # VMON_REF0 -> PROBE_DC 
+        # ADC: VMON_REF0 -> PROBE_DC  |  Signal: MPPC_BIAS + VCC_IN 
         self.chip.ref_config(1) # internal reference on (needed for IDAC)
         self.chip.set_conv_delay(7)
 
@@ -76,7 +110,7 @@ class id_ADS124:
         self.chip.set_idac_channel(self.IDAC1,13)
 
         self.chip.setup_mux(self.VMON_REF0,self.PROBE_DC)
-        line = 'VMON_REF0 -> PROBE_DC'
+        line = 'MPPC_BIAS + VCC_IN'
         resistance = self.chip.read_volts(vref=2000,ave=4)
         passed, message = check_value(resistance[0], self.passing_criteria['min_resistance'], self.passing_criteria['max_resistance'])
         if not passed:
@@ -86,11 +120,10 @@ class id_ADS124:
             else:
                 self.comments.append('Open identified on path {}'.format(line))
         self.data[line] = resistance[0]
-        print("line %s resistance is %.2f ohms; %s" % (line, resistance[0], message))
 
 
 
-        ############## Next line        
+        # ADC: PWR_EN -> X_RESETb  |  Signal: PWR_EN + SCA_RSTB        
         self.chip.ref_config(1) # internal reference on (needed for IDAC)                                                                        
         self.chip.set_gain(1,enable=False)
         self.chip.set_conv_delay(7)
@@ -101,7 +134,7 @@ class id_ADS124:
 #        self.chip.setup_mux(self.X_RESETb, self.X_PWR_EN)
 
         self.chip.setup_mux(self.X_PWR_EN, self.X_RESETb)
-        line = 'PWR_EN -> X_RESETb'
+        line = 'PWR_EN + SCA_RSTB'
         resistance = self.chip.read_volts(vref=2000,ave=4)
         passed, message = check_value(resistance[0], self.passing_criteria['min_resistance'], self.passing_criteria['max_resistance'])
         if not passed:
@@ -111,16 +144,15 @@ class id_ADS124:
             else:
                 self.comments.append('Open identified on path {}'.format(line))
         self.data[line] = resistance[0]
-        print("line %s resistance is %.2f ohms; %s" % (line, resistance[0], message))
      
 
  
-        ############### Next line
+        # ADC: VMON_REF1 -> WAGON_TYPE  |  Signal: VMON + RTD
         self.chip.set_idac_channel(self.IDAC2,13)
         self.chip.set_idac_current(500)
 #        self.chip.setup_mux(self.WAGON_TYPE,self.VMON_REF1)
         self.chip.setup_mux(self.VMON_REF1, self.WAGON_TYPE)
-        line = 'VMON_REF1 -> WAGON_TYPE'
+        line = 'VMON + RTD'
         resistance = self.chip.read_volts(vref=2000,ave=4)
         passed, message = check_value(resistance[0], self.passing_criteria['min_resistance'], self.passing_criteria['max_resistance'])
         if not passed:
@@ -130,28 +162,36 @@ class id_ADS124:
             else:
                 self.comments.append('Open identified on path {}'.format(line))
         self.data[line] = resistance[0]
-        print("line %s resistance is %.2f ohms; %s" % (line, resistance[0], message))
 
 
 
-        ############## Next line        
+        # ADC: VMON_REF2 -> PROBE_DC  |  Signal: LED_BIAS + VCC_IN        
         self.chip.set_idac_channel(self.IDAC3,13)
         #self.chip.set_idac_current(500)
         self.chip.setup_mux(self.VMON_REF2,self.PROBE_DC)
-        line = 'VMON_REF2 -> PROBE_DC'
+        line = 'LED_BIAS + VCC_IN'
         resistance = self.chip.read_volts(vref=2000,ave=4)
         passed, message = check_value(resistance[0], self.passing_criteria['min_resistance'], self.passing_criteria['max_resistance'])
         if not passed:
             all_passed = False
             if resistance[0] <= self.passing_criteria['min_resistance']:
-                self.comments.append('Short identified on module {} path {}'.format(self.module, line))
+                self.comments.append('Short identified on path {}'.format(line))
             else:
-                self.comments.append('Open identified on module {} path {}'.format(self.module, line))
+                self.comments.append('Open identified on path {}'.format(line))
         self.data[line] = resistance[0]
-        print("line %s resistance is %.2f ohms; %s" % (line, resistance[0], message))
 
 
-        print("Did all pass? : {}".format(all_passed))
+
+        # Print resistance summary table
+        min_r = self.passing_criteria['min_resistance']
+        max_r = self.passing_criteria['max_resistance']
+        print("Resistance Test: {}".format("PASS" if all_passed else "FAIL"))
+        print("{:<25} {:>12} {:>10}".format("Line", "Resistance", "Status"))
+        print("-" * 50)
+        for ln, val in self.data.items():
+            st = "PASS" if min_r < val < max_r else "FAIL"
+            print("{:<25} {:>8.2f} ohms {:>10}".format(ln, val, st))
+        print("-" * 50)
 
         self.chip.powerdown()
 
@@ -161,6 +201,9 @@ class id_ADS124:
 class id_resist_test(Test):
 
     def __init__(self, conn, board_sn=-1, tester=""):
+        # TODO [FFH SUPPORT]: Auto-detect cable type from board_sn here
+        # (check for 'FFH' vs 'FBH' in serial number, like run_bert.py does)
+        # and pass cable_type to id_ADS124 so it uses the correct pin config.
         self.info_dict = {'name': "Flex Cable Resistance Test", 'board_sn': board_sn, 'tester': tester}
         
         
@@ -189,7 +232,6 @@ class id_resist_test(Test):
        
         self.conn.send("Done.")
 
-        print({"pass": passed, "data": data})
 
         return passed, data
 

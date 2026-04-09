@@ -12,13 +12,14 @@ from argparse import ArgumentParser
 
 class FitData:
     
-    def __init__(self, path_data, conn, scan_idx=-1, num_scan=-1, scan_mask=None, iskip=1):
+    def __init__(self, path_data, conn, scan_idx=-1, num_scan=-1, scan_mask=None, iskip=1, link_names=None):
         self.all_data = read_csv(path_data, header=None, delim_whitespace=True)
         self.path = path_data
         self.num_scan = num_scan        
         self.scan_idx = scan_idx
         self.conn = conn
         self.iskip = iskip
+        self.link_names = link_names if link_names is not None else []
 #        print("In fit_bert_tmp.py: __init__") 
 #        print("self.path:", self.path)
 #        print("self.num_scan:", self.num_scan)
@@ -35,8 +36,9 @@ class FitData:
             self.results = []
             for i,mask_val in enumerate(scan_mask):
                 if mask_val:
-                    print(f"Fitting BER scan #{i}...")
-                    self.conn.send("Fitting BER Scan #{}...".format(i))
+                    name = self.link_names[len(self.results)] if len(self.results) < len(self.link_names) else "ELINK_{}".format(i)
+                    print(f"Fitting {name}...")
+                    self.conn.send("Fitting {}...".format(name))
 #                    print("Calling self.get_one_scan(i), where i is", i)
                     i_scan = self.get_one_scan(i)
                     res = self.do_fit(i, i_scan)
@@ -45,7 +47,7 @@ class FitData:
                     res["Module"] = mask_val
                     self.results.append(res)
                 else:
-                    print("Skipping unused ELINK with RX index {}".format(i))
+                    print("Skipping column {}".format(i))
 
 
     def get_results(self):
@@ -147,9 +149,7 @@ class FitData:
 #        print("x2:", x2)
 #        print("w2:", w2)
 #        print("TD2:", TD2)
-        print("Eye opening: (x2 - x1):", width)
-        print("BER Scan for TRIG_ELINK_{} ({:e} PRBS per delay)".format(scan_idx, self.num_scan))
-        print()
+        print("Eye opening: {}".format(width))
 #        fig, axs = plt.subplots(2, gridspec_kw={'height_ratios': [2, 1]})
 #        axs[0].scatter(scan['xdata'], scan['ydata'], label="BERT Data", s=10)
 #        axs[0].set_yscale('log')
@@ -180,23 +180,42 @@ class FitData:
         ax.scatter(scan['xdata'], res, s=10)
 
     def get_peaks(self, scan):
-        
-        maxes = []
+        # Find contiguous non-zero regions (bumps) and the peak of each
+        bumps = []
+        in_bump = False
+        bump_start = 0
 
-        for (x,y) in zip(scan['xdata'], scan['ydata']):
-            if x < scan['xdata'][1] or x >= scan['xdata'][-2]:
-                continue
-           
-            one_back = scan['ydata'][scan['xdata'].index(x)-1]
-            two_back = scan['ydata'][scan['xdata'].index(x)-2]
-            one_forward = scan['ydata'][scan['xdata'].index(x)+1]
-            two_forward = scan['ydata'][scan['xdata'].index(x)+2]
- 
-            if one_back <= y and two_back <= y and one_forward <= y and two_forward <= y and y != 0:
-                if x-self.iskip not in maxes and x-2*self.iskip not in maxes: 
-                    maxes.append(x)
-#        print(maxes)
-        return maxes            
+        for i, y in enumerate(scan['ydata']):
+            if y > 0 and not in_bump:
+                in_bump = True
+                bump_start = i
+            elif y == 0 and in_bump:
+                in_bump = False
+                bump_data = scan['ydata'][bump_start:i]
+                peak_idx = bump_start + bump_data.index(max(bump_data))
+                bumps.append(scan['xdata'][peak_idx])
+
+        # Handle bump that extends to the end of the scan
+        if in_bump:
+            bump_data = scan['ydata'][bump_start:]
+            peak_idx = bump_start + bump_data.index(max(bump_data))
+            bumps.append(scan['xdata'][peak_idx])
+
+        if len(bumps) < 2:
+            return []
+
+        if len(bumps) == 2:
+            return bumps
+
+        # 3+ bumps means a wrap-around: pick the closest adjacent pair
+        min_gap = float('inf')
+        best = [bumps[0], bumps[1]]
+        for i in range(len(bumps) - 1):
+            gap = bumps[i+1] - bumps[i]
+            if gap < min_gap:
+                min_gap = gap
+                best = [bumps[i], bumps[i+1]]
+        return best            
 
 
     def get_window(self, scan):
