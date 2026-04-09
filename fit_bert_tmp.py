@@ -180,23 +180,42 @@ class FitData:
         ax.scatter(scan['xdata'], res, s=10)
 
     def get_peaks(self, scan):
-        
-        maxes = []
+        # Find contiguous non-zero regions (bumps) and the peak of each
+        bumps = []
+        in_bump = False
+        bump_start = 0
 
-        for (x,y) in zip(scan['xdata'], scan['ydata']):
-            if x < scan['xdata'][1] or x >= scan['xdata'][-2]:
-                continue
-           
-            one_back = scan['ydata'][scan['xdata'].index(x)-1]
-            two_back = scan['ydata'][scan['xdata'].index(x)-2]
-            one_forward = scan['ydata'][scan['xdata'].index(x)+1]
-            two_forward = scan['ydata'][scan['xdata'].index(x)+2]
- 
-            if one_back <= y and two_back <= y and one_forward <= y and two_forward <= y and y != 0:
-                if x-self.iskip not in maxes and x-2*self.iskip not in maxes: 
-                    maxes.append(x)
-#        print(maxes)
-        return maxes            
+        for i, y in enumerate(scan['ydata']):
+            if y > 0 and not in_bump:
+                in_bump = True
+                bump_start = i
+            elif y == 0 and in_bump:
+                in_bump = False
+                bump_data = scan['ydata'][bump_start:i]
+                peak_idx = bump_start + bump_data.index(max(bump_data))
+                bumps.append(scan['xdata'][peak_idx])
+
+        # Handle bump that extends to the end of the scan
+        if in_bump:
+            bump_data = scan['ydata'][bump_start:]
+            peak_idx = bump_start + bump_data.index(max(bump_data))
+            bumps.append(scan['xdata'][peak_idx])
+
+        if len(bumps) < 2:
+            return []
+
+        if len(bumps) == 2:
+            return bumps
+
+        # 3+ bumps means a wrap-around: pick the closest adjacent pair
+        min_gap = float('inf')
+        best = [bumps[0], bumps[1]]
+        for i in range(len(bumps) - 1):
+            gap = bumps[i+1] - bumps[i]
+            if gap < min_gap:
+                min_gap = gap
+                best = [bumps[i], bumps[i+1]]
+        return best            
 
 
     def get_window(self, scan):
