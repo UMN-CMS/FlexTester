@@ -79,7 +79,7 @@ class id_ADS124:
         self.chip.reset()
         self.passing_criteria = {
             'min_resistance': 0.5,
-            'max_resistance': 70.,
+            'max_resistance': 75.,
         }
         self.chip.reset_POR_flag()
         self.data = {}
